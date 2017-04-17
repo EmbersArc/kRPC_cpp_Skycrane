@@ -13,7 +13,7 @@ SOURCES += \
     src/main_skycrane.cpp \
     src/pid.cpp \
     src/quad_vesselcontrol.cpp \
-    src/tuple_operations.cpp
+    main_skycrane.cpp
 
 HEADERS += \
     pid.h \
