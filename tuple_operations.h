@@ -1,0 +1,4 @@
+#ifndef TUPLE_OPERATIONS_H
+#define TUPLE_OPERATIONS_H
+
+#endif // TUPLE_OPERATIONS_H
