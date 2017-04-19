@@ -18,11 +18,11 @@ class VesselControl{
 
     public:
         VesselControl(string name);
-        void retractGear();
-        void startEngines();
-        void loop();
+        void StartEngines();
+        void Loop();
+        void CreateLanderVessel(string name);
         ~VesselControl();
-        krpc::services::SpaceCenter::Vessel vessel;
+        krpc::services::SpaceCenter::Vessel vessel,lander;
 
         //STREAMS
             krpc::Stream<tuple<double, double, double>> vel_stream;
@@ -49,22 +49,22 @@ class VesselControl{
 
         //PID CONTROLLERS
             //lat and lon guidance velocity P controller
-            PID LonVelGuidanceVelPID = PID(300,-300,2,0,0);
-            PID LatVelGuidanceVelPID = PID(300,-300,2,0,0);
+            PID LonVelGuidanceVelPID = PID(300,-300,4,0,0);
+            PID LatVelGuidanceVelPID = PID(300,-300,4,0,0);
 
             //lat and lon guidance adjustment P controller
-            PID LatGuidanceAdjustPID = PID(1.2,-1.2,0.05,0.01,0);
-            PID LonGuidanceAdjustPID = PID(1.2,-1.2,0.05,0.01,0);
+            PID LatGuidanceAdjustPID = PID(0.4,-0.4,0.05,0.01,0);
+            PID LonGuidanceAdjustPID = PID(0.4,-0.4,0.05,0.01,0);
 
             //Rotational velocity control setup
-            PID PitchVelControlPID 		= PID(3,	-3,	0.045,	0.035,	0);
-            PID YawVelControlPID 		= PID(3,	-3,	0.045,	0.035,	0);
-            PID RollVelControlPID 		= PID(2,	-2,	0.02,	0.02,	0);
+            PID PitchVelControlPID 		= PID(3,	-3,	0.06,	0.035,	0);
+            PID YawVelControlPID 		= PID(3,	-3,	0.06,	0.035,	0);
+            PID RollVelControlPID 		= PID(1,	-1,	0.005,	0.005,	0);
 
             //Rotational torque control setup
             PID PitchTorqueControlPID	= PID(0.4,	-0.4,	0.25,	0,		0);
             PID YawTorqueControlPID		= PID(0.4,	-0.4,	0.25,	0,		0);
-            PID RollTorqueControlPID	= PID(0.4,	-0.4,	0.25,	0,		0);
+            PID RollTorqueControlPID	= PID(0.2,	-0.2,	0.,	0,		0);
 
             //Altitude speed control setup
             PID VertSpeedControlPID		= PID(40,	-40,		0.7,		0,		0);
@@ -75,7 +75,7 @@ class VesselControl{
 
 
     private:
-        krpc::services::SpaceCenter::Vessel findVessel(string name);
+        krpc::services::SpaceCenter::Vessel FindVessel(string name);
 
         double LatSpeedSP, LonSpeedSP;
 
@@ -106,7 +106,8 @@ class VesselControl{
         krpc::services::SpaceCenter::ReferenceFrame ref_frame_vessel;
 
         //Engines
-        krpc::services::SpaceCenter::Part WD1Engine,WD2Engine,AS1Engine,AS2Engine,SD1Engine,SD2Engine,AW1Engine,AW2Engine;
+        krpc::services::SpaceCenter::Part
+        FR1Engine,FR2Engine,FL1Engine,FL2Engine,BR1Engine,BR2Engine,BL1Engine,BL2Engine;
 
 };
 

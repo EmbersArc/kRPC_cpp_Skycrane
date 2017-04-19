@@ -10,19 +10,41 @@ int main() {
 
     cout << "Started." << endl;
 
-    VesselControl Vessel1 = VesselControl("Drone");
+    VesselControl Curiosity = VesselControl("Curiosity");
 
+    Curiosity.StartEngines();
+    Curiosity.alt1 = Curiosity.alt_stream() + 5;
+    Curiosity.vessel.control().set_throttle(1);
 
-    cout << "Assigned vessel:    " << Vessel1.vessel.name() << endl;
+    Curiosity.SetTopVector = make_tuple(0,1,0);
 
-    Vessel1.startEngines();
-    Vessel1.alt1 = 1000;
-    Vessel1.vessel.control().set_throttle(1);
-    Vessel1.retractGear();
-
-    Vessel1.SetTopVector = make_tuple(0,0,1);
-
-    while (true){
-        Vessel1.loop() ;
+    while(abs(Curiosity.alt1 - Curiosity.alt_stream()) > 2){
+        Curiosity.Loop();
         }
+
+    Curiosity.vessel.control().toggle_action_group(1);;
+    Curiosity.vessel.parts().decouplers()[0].decouple();
+    cout << "Skycrane extending" << endl;
+    Curiosity.CreateLanderVessel("Curiosity Probe");
+
+
+    while(Curiosity.lander.situation() != krpc::services::SpaceCenter::VesselSituation::landed){
+        Curiosity.Loop();
+    }
+
+    Curiosity.vessel.control().toggle_action_group(2);
+
+    Curiosity.alt1 += 1000;
+    Curiosity.lat1 += 0.05;
+
+    cout << "Cut cables" << endl;
+
+    while(Curiosity.alt_stream() < Curiosity.alt1 - 950){
+        Curiosity.Loop();
+    }
+
+    Curiosity.vessel.control().set_throttle(0);
+
+
+
 }

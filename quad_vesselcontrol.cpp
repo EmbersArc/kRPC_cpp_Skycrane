@@ -12,7 +12,7 @@ VesselControl::VesselControl(string name){
 
     cout << "Searching for vessel named " << name << endl;
 
-    vessel = findVessel(name);
+    vessel = FindVessel(name);
 
     //REFERENCE FRAMES
         ref_frame_surf = vessel.surface_reference_frame();
@@ -28,7 +28,7 @@ VesselControl::VesselControl(string name){
         angvel_stream = vessel.angular_velocity_stream(ref_frame_nonrot);
 
         //stream altitude
-        alt_stream = vessel.flight().mean_altitude_stream();
+        alt_stream = vessel.flight(ref_frame_nonrot).mean_altitude_stream();
         alt0 = alt_stream();
 
         //stream lat and lon
@@ -41,39 +41,38 @@ VesselControl::VesselControl(string name){
         lon1 = lon0;
 
         //ASSIGN ENGINES
-        WD1Engine = vessel.parts().with_tag("WD1")[0];
-        WD2Engine = vessel.parts().with_tag("WD2")[0];
-        AS1Engine = vessel.parts().with_tag("AS1")[0];
-        AS2Engine = vessel.parts().with_tag("AS2")[0];
-        SD1Engine = vessel.parts().with_tag("SD1")[0];
-        SD2Engine = vessel.parts().with_tag("SD2")[0];
-        AW1Engine = vessel.parts().with_tag("AW1")[0];
-        AW2Engine = vessel.parts().with_tag("AW2")[0];
+        FR1Engine = vessel.parts().with_tag("FR1")[0];
+        FR2Engine = vessel.parts().with_tag("FR2")[0];
+        FL1Engine = vessel.parts().with_tag("FL1")[0];
+        FL2Engine = vessel.parts().with_tag("FL2")[0];
+        BR1Engine = vessel.parts().with_tag("BR1")[0];
+        BR2Engine = vessel.parts().with_tag("BR2")[0];
+        BL1Engine = vessel.parts().with_tag("BL1")[0];
+        BL2Engine = vessel.parts().with_tag("BL2")[0];
 
         cout << vessel.name() << " successfully created." << endl;
 
 }
 
-void VesselControl::retractGear(){
-    if (vessel.parts().with_name("airbrake1")[0].control_surface().deployed() == true){
-        for (int i = 0; i<4 ; i++){
-            vessel.parts().with_name("airbrake1")[i].control_surface().set_deployed(false);
-        }
-    }
-}
-
-void VesselControl::startEngines(){
+void VesselControl::StartEngines(){
     vector<krpc::services::SpaceCenter::Engine> AllEngines = vessel.parts().engines();
         for (int j = 0; j < int(AllEngines.size()) ; j++){
             AllEngines[j].set_active(true);
+            AllEngines[j].set_gimbal_limit(0);
     }
 }
 
-void VesselControl::loop(){
+void VesselControl::CreateLanderVessel(string name){
+
+    lander = FindVessel(name);
+
+}
+
+void VesselControl::Loop(){
 
 
         SetForeVector = make_tuple(1,tan(LatAdjust),tan(LonAdjust));
-        SetTopVector = SetTopVector;
+
         velvec_surf = sct.transform_direction(vel_stream(),ref_frame_orbit_body,ref_frame_surf);
 
         TopVector_surface = sct.transform_direction(TopVector,ref_frame_vessel,ref_frame_surf);
@@ -107,14 +106,14 @@ void VesselControl::loop(){
         }
 
         //update thrust limits
-        AW1Engine.engine().set_thrust_limit((midval + pitchAdjust + yawAdjust + rollAdjust));
-        AW2Engine.engine().set_thrust_limit((midval + pitchAdjust + yawAdjust - rollAdjust));
-        WD1Engine.engine().set_thrust_limit((midval + pitchAdjust - yawAdjust + rollAdjust));
-        WD2Engine.engine().set_thrust_limit((midval + pitchAdjust - yawAdjust - rollAdjust));
-        SD1Engine.engine().set_thrust_limit((midval - pitchAdjust - yawAdjust + rollAdjust));
-        SD2Engine.engine().set_thrust_limit((midval - pitchAdjust - yawAdjust - rollAdjust));
-        AS1Engine.engine().set_thrust_limit((midval - pitchAdjust + yawAdjust + rollAdjust));
-        AS2Engine.engine().set_thrust_limit((midval - pitchAdjust + yawAdjust - rollAdjust));
+        BR1Engine.engine().set_thrust_limit((midval + pitchAdjust + yawAdjust + rollAdjust));
+        BR2Engine.engine().set_thrust_limit((midval + pitchAdjust + yawAdjust ));
+        BL1Engine.engine().set_thrust_limit((midval + pitchAdjust - yawAdjust - rollAdjust));
+        BL2Engine.engine().set_thrust_limit((midval + pitchAdjust - yawAdjust ));
+        FL1Engine.engine().set_thrust_limit((midval - pitchAdjust - yawAdjust + rollAdjust));
+        FL2Engine.engine().set_thrust_limit((midval - pitchAdjust - yawAdjust ));
+        FR1Engine.engine().set_thrust_limit((midval - pitchAdjust + yawAdjust - rollAdjust));
+        FR2Engine.engine().set_thrust_limit((midval - pitchAdjust + yawAdjust ));
 
         //Horizontal speed
         if (lonVelOverride == 0){
@@ -133,7 +132,7 @@ void VesselControl::loop(){
 
 }
 
-krpc::services::SpaceCenter::Vessel VesselControl::findVessel(string name){
+krpc::services::SpaceCenter::Vessel VesselControl::FindVessel(string name){
     krpc::services::SpaceCenter::Vessel vessel;
     for (int j = 0; j < int(sct.vessels().size()) ; j++){
         if (sct.vessels()[j].name() == name){
