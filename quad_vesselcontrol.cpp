@@ -6,11 +6,11 @@ using namespace std;
 
 krpc::Client conn = krpc::connect("VM","10.0.2.2");
 krpc::services::SpaceCenter sct = krpc::services::SpaceCenter(&conn);
+krpc::services::InfernalRobotics inf = krpc::services::InfernalRobotics(&conn);
 
 
 VesselControl::VesselControl(string name){
 
-    cout << "Searching for vessel named " << name << endl;
 
     vessel = FindVessel(name);
 
@@ -133,6 +133,9 @@ void VesselControl::Loop(){
 }
 
 krpc::services::SpaceCenter::Vessel VesselControl::FindVessel(string name){
+
+    cout << "Searching for vessel named " << name << endl;
+
     krpc::services::SpaceCenter::Vessel vessel;
     for (int j = 0; j < int(sct.vessels().size()) ; j++){
         if (sct.vessels()[j].name() == name){
@@ -141,6 +144,16 @@ krpc::services::SpaceCenter::Vessel VesselControl::FindVessel(string name){
         }
     }
     return vessel;
+}
+
+void VesselControl::ExtendGear(){
+
+    krpc::services::InfernalRobotics::ServoGroup extend, rotate;
+    extend = inf.servo_group_with_name(lander,"Ext");
+    rotate = inf.servo_group_with_name(lander,"Rot");
+    extend.move_next_preset();
+    rotate.move_next_preset();
+
 }
 
 VesselControl::~VesselControl(){

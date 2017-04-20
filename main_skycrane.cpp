@@ -27,6 +27,8 @@ int main() {
     cout << "Skycrane extending" << endl;
     Curiosity.CreateLanderVessel("Curiosity Probe");
 
+    Curiosity.ExtendGear();
+
 
     while(Curiosity.lander.situation() != krpc::services::SpaceCenter::VesselSituation::landed){
         Curiosity.Loop();

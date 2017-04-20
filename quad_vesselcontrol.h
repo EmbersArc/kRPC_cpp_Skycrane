@@ -7,6 +7,7 @@
 
 #include <krpc.hpp>
 #include <krpc/services/space_center.hpp>
+#include <krpc/services/infernal_robotics.hpp>
 
 #include "pid.h"
 #include "tuple_operations.h"
@@ -21,6 +22,7 @@ class VesselControl{
         void StartEngines();
         void Loop();
         void CreateLanderVessel(string name);
+        void ExtendGear();
         ~VesselControl();
         krpc::services::SpaceCenter::Vessel vessel,lander;
 
