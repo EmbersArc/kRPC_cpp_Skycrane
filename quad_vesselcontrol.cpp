@@ -7,7 +7,7 @@ using namespace std;
 krpc::Client conn = krpc::connect("VM","10.0.2.2");
 krpc::services::SpaceCenter sct = krpc::services::SpaceCenter(&conn);
 krpc::services::InfernalRobotics inf = krpc::services::InfernalRobotics(&conn);
-
+//krpc::services::Drawing dra = krpc::services::Drawing(&conn);
 
 VesselControl::VesselControl(string name){
 
@@ -29,18 +29,19 @@ VesselControl::VesselControl(string name){
 
         //stream altitude
         alt_stream = vessel.flight(ref_frame_nonrot).mean_altitude_stream();
+        alt_stream_ground = vessel.flight(ref_frame_nonrot).surface_altitude_stream();
         alt0 = alt_stream();
+
+        //stream g force
+        g_force_stream = vessel.flight(ref_frame_surf).g_force_stream();
 
         //stream lat and lon
         lat_stream = vessel.flight(ref_frame_orbit_body).latitude_stream();
         lon_stream = vessel.flight(ref_frame_orbit_body).longitude_stream();
 
-        lat0 = lat_stream();
-        lon0 = lon_stream();
-        lat1 = lat0;
-        lon1 = lon0;
+        ResetLatLon();
 
-        //ASSIGN ENGINES
+    //ASSIGN ENGINES
         FR1Engine = vessel.parts().with_tag("FR1")[0];
         FR2Engine = vessel.parts().with_tag("FR2")[0];
         FL1Engine = vessel.parts().with_tag("FL1")[0];
@@ -70,10 +71,15 @@ void VesselControl::CreateLanderVessel(string name){
 
 void VesselControl::Loop(){
 
-
-        SetForeVector = make_tuple(1,tan(LatAdjust),tan(LonAdjust));
-
         velvec_surf = sct.transform_direction(vel_stream(),ref_frame_orbit_body,ref_frame_surf);
+
+
+        if(brakingMode){
+            SetForeVector = normalize(invert(velvec_surf));
+        }else{
+            SetForeVector = make_tuple(1,tan(LatAdjust),tan(LonAdjust));
+        }
+
 
         TopVector_surface = sct.transform_direction(TopVector,ref_frame_vessel,ref_frame_surf);
         ForeVector_surface = sct.transform_direction(ForeVector,ref_frame_vessel,ref_frame_surf);
@@ -86,8 +92,14 @@ void VesselControl::Loop(){
         rollVelSP = RollVelControlPID.calculate(0,get<2>(attitudeError));
 
         //vertical speed
-        vertVelSP = VertSpeedControlPID.calculate(alt1,alt_stream());
-        thrott = ThrottleControlPID.calculate(vertVelSP,get<0>(velvec_surf));
+        if(brakingMode){
+            double a_setpoint = pow(magnitude(vel_stream()),2) / (2 * alt_stream_ground() + 7);
+            thrott = ThrottleControlBrakingPID.calculate(a_setpoint, g_force_stream());
+            cout << ThrottleControlBrakingPID.lastError() << endl;
+        }else{
+            vertVelSP = VertSpeedControlPID.calculate(alt1,alt_stream());
+            thrott = ThrottleControlPID.calculate(vertVelSP,get<0>(velvec_surf));
+        }
 
         //get angular velocity vector
         angVel_vessel = sct.transform_direction(angvel_stream(),ref_frame_nonrot,ref_frame_vessel);
@@ -154,6 +166,13 @@ void VesselControl::ExtendGear(){
     extend.move_next_preset();
     rotate.move_next_preset();
 
+}
+
+void VesselControl::ResetLatLon(){
+    lat0 = lat_stream();
+    lon0 = lon_stream();
+    lat1 = lat0;
+    lon1 = lon0;
 }
 
 VesselControl::~VesselControl(){

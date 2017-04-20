@@ -8,6 +8,8 @@
 #include <krpc.hpp>
 #include <krpc/services/space_center.hpp>
 #include <krpc/services/infernal_robotics.hpp>
+//#include <krpc/services/ui.hpp>
+//#include <krpc/services/drawing.hpp>
 
 #include "pid.h"
 #include "tuple_operations.h"
@@ -23,17 +25,21 @@ class VesselControl{
         void Loop();
         void CreateLanderVessel(string name);
         void ExtendGear();
+        void ResetLatLon();
         ~VesselControl();
         krpc::services::SpaceCenter::Vessel vessel,lander;
+        bool brakingMode = false;
 
         //STREAMS
             krpc::Stream<tuple<double, double, double>> vel_stream;
             tuple<double, double, double> velvec_surf;
             //stream angular velocity
             krpc::Stream<tuple<double, double, double>> angvel_stream;
+            //stream g force
+            krpc::Stream<float> g_force_stream;
 
             //stream altitude
-            krpc::Stream<double> alt_stream;
+            krpc::Stream<double> alt_stream, alt_stream_ground;
             float alt0, alt1;
 
             //stream lat and lon
@@ -64,15 +70,16 @@ class VesselControl{
             PID RollVelControlPID 		= PID(1,	-1,	0.005,	0.005,	0);
 
             //Rotational torque control setup
-            PID PitchTorqueControlPID	= PID(0.4,	-0.4,	0.25,	0,		0);
-            PID YawTorqueControlPID		= PID(0.4,	-0.4,	0.25,	0,		0);
-            PID RollTorqueControlPID	= PID(0.2,	-0.2,	0.,	0,		0);
+            PID PitchTorqueControlPID	= PID(0.4,	-0.4,	0.2,	0,		0);
+            PID YawTorqueControlPID		= PID(0.4,	-0.4,	0.2,	0,		0);
+            PID RollTorqueControlPID	= PID(0.2,	-0.2,	0.3,	0,		0);
 
             //Altitude speed control setup
             PID VertSpeedControlPID		= PID(40,	-40,		0.7,		0,		0);
 
             //Altitude throttle control setup
-            PID ThrottleControlPID		= PID(0.8,	0,		0.15,	0.3,	0);
+            PID ThrottleControlPID          = PID(0.8,	0,		0.15,	0.3,	0);
+            PID ThrottleControlBrakingPID	= PID(0.9,	0,		0.8,	0.5,	0);
 
 
 
