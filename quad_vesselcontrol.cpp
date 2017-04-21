@@ -7,7 +7,7 @@ using namespace std;
 krpc::Client conn = krpc::connect("VM","10.0.2.2");
 krpc::services::SpaceCenter sct = krpc::services::SpaceCenter(&conn);
 krpc::services::InfernalRobotics inf = krpc::services::InfernalRobotics(&conn);
-//krpc::services::Drawing dra = krpc::services::Drawing(&conn);
+krpc::services::Drawing dra = krpc::services::Drawing(&conn);
 
 VesselControl::VesselControl(string name){
 
@@ -73,13 +73,11 @@ void VesselControl::Loop(){
 
         velvec_surf = sct.transform_direction(vel_stream(),ref_frame_orbit_body,ref_frame_surf);
 
-
         if(brakingMode){
             SetForeVector = normalize(invert(velvec_surf));
         }else{
             SetForeVector = make_tuple(1,tan(LatAdjust),tan(LonAdjust));
         }
-
 
         TopVector_surface = sct.transform_direction(TopVector,ref_frame_vessel,ref_frame_surf);
         ForeVector_surface = sct.transform_direction(ForeVector,ref_frame_vessel,ref_frame_surf);
@@ -93,12 +91,18 @@ void VesselControl::Loop(){
 
         //vertical speed
         if(brakingMode){
-            double a_setpoint = pow(magnitude(vel_stream()),2) / (2 * alt_stream_ground() + 7);
+            a_setpoint = pow(magnitude(vel_stream()),2) / (2 * alt_stream_ground() + 7);
             thrott = ThrottleControlBrakingPID.calculate(a_setpoint, g_force_stream());
-            cout << ThrottleControlBrakingPID.lastError() << endl;
         }else{
-            vertVelSP = VertSpeedControlPID.calculate(alt1,alt_stream());
+            vertVelSP = VertSpeedControlPID.calculate(alt1,alt_stream_ground());
             thrott = ThrottleControlPID.calculate(vertVelSP,get<0>(velvec_surf));
+        }
+        //attitude correction priority
+        if( magnitude( make_tuple(get<0>(attitudeError),get<1>(attitudeError),0) ) > 30){
+            midval = 0;
+        }
+        else{
+            midval = thrott;
         }
 
         //get angular velocity vector
@@ -108,14 +112,6 @@ void VesselControl::Loop(){
         pitchAdjust = PitchTorqueControlPID.calculate(pitchVelSP, get<0>(angVel_vessel));
         yawAdjust = YawTorqueControlPID.calculate(yawVelSP, get<2>(angVel_vessel));
         rollAdjust = -RollTorqueControlPID.calculate(rollVelSP, get<1>(angVel_vessel));
-
-        //attitude correction priority
-        if( magnitude( make_tuple(get<0>(attitudeError),get<1>(attitudeError),0) ) > 30){
-            midval = 0;
-        }
-        else{
-            midval = thrott;
-        }
 
         //update thrust limits
         BR1Engine.engine().set_thrust_limit((midval + pitchAdjust + yawAdjust + rollAdjust));
@@ -138,6 +134,8 @@ void VesselControl::Loop(){
         }else{
             LatSpeedSP = latVelOverride;
         }
+
+//        cout << LatSpeedSP << "     " << LonSpeedSP << endl;
 
         LatAdjust = LatGuidanceAdjustPID.calculate(LatSpeedSP,get<1>(velvec_surf));
         LonAdjust = LonGuidanceAdjustPID.calculate(LonSpeedSP,get<2>(velvec_surf));
@@ -176,11 +174,11 @@ void VesselControl::ResetLatLon(){
 }
 
 VesselControl::~VesselControl(){
-        vel_stream.remove();
-        angvel_stream.remove();
-        alt_stream.remove();
-        lat_stream.remove();
-        lon_stream.remove();
+    vel_stream.remove();
+    angvel_stream.remove();
+    alt_stream.remove();
+    lat_stream.remove();
+    lon_stream.remove();
 }
 
 

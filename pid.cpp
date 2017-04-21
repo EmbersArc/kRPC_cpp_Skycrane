@@ -1,8 +1,7 @@
 #ifndef _PID_SOURCE_
 #define _PID_SOURCE_
 
-#include <cmath>
-#include <ctime>
+
 #include "pid.h"
 
 using namespace std;
@@ -29,11 +28,12 @@ class PIDImpl
         double _Kd;
         double _Ki;
         double _integral;
-        time_t _time_last;
-        time_t _time_now;
+        double _time_last;
+        double _time_now;
         bool _windup;
         double _pv_last;
         double _error;
+        double _error_last;
         double _Pout;
         double _Iout;
         double _Dout;
@@ -65,7 +65,7 @@ PIDImpl::PIDImpl(double max, double min, double Kp, double Ki, double Kd ) :
     _Kd(Kd),
     _Ki(Ki),
     _integral(0),
-    _time_last(clock()),
+    _time_last(chrono::duration_cast<chrono::microseconds>(chrono::high_resolution_clock::now().time_since_epoch()).count()),
     _time_now(0),
     _windup(false),
     _pv_last(0),
@@ -78,17 +78,18 @@ PIDImpl::PIDImpl(double max, double min, double Kp, double Ki, double Kd ) :
 
 double PIDImpl::calculate( double setpoint, double pv )
 {
-    _time_now = clock();
-
+    _time_now = chrono::duration_cast<chrono::microseconds>(chrono::high_resolution_clock::now().time_since_epoch()).count();
     // Calculate error
     _error = setpoint - pv;
 
     // Proportional term
     _Pout = _Kp * _error;
 
-    // Integral term
-    _dt = double(_time_now - _time_last)/CLOCKS_PER_SEC;
+    //time step
+    _dt = _time_now - _time_last;
+    _dt /= 1000000;
 
+    // Integral term
     if (_windup == false) {
     _integral += _error * _dt;
     }
@@ -97,7 +98,8 @@ double PIDImpl::calculate( double setpoint, double pv )
 
     // Derivative term
     if (_dt > 0){
-    double derivative = (pv - _pv_last) / (_dt*50);
+//    double derivative = (pv - _pv_last) / (_dt);
+    double derivative = (_error - _error_last) / (_dt);
     _Dout = _Kd * derivative;
     }
     else{
@@ -120,6 +122,7 @@ double PIDImpl::calculate( double setpoint, double pv )
     // Save error to previous error
     _pv_last = pv;
     _time_last = _time_now;
+    _error_last = _error;
 
     return output;
 }
