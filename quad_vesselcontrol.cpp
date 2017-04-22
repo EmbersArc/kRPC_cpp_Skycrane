@@ -24,6 +24,7 @@ VesselControl::VesselControl(string name){
     //OPEN ALL THE STREAMS
         //stream velocity
         vel_stream = vessel.flight(ref_frame_orbit_body).velocity_stream();
+
         //stream angular velocity
         angvel_stream = vessel.angular_velocity_stream(ref_frame_nonrot);
 
@@ -40,6 +41,7 @@ VesselControl::VesselControl(string name){
         lon_stream = vessel.flight(ref_frame_orbit_body).longitude_stream();
 
         ResetLatLon();
+
 
     //ASSIGN ENGINES
         FR1Engine = vessel.parts().with_tag("FR1")[0];
@@ -77,7 +79,25 @@ void VesselControl::Loop(){
             SetForeVector = normalize(invert(velvec_surf));
         }else{
             SetForeVector = make_tuple(1,tan(LatAdjust),tan(LonAdjust));
+
+            //Horizontal speed
+            if (lonVelOverride == 0){
+                LonSpeedSP = LonVelGuidanceVelPID.calculate(1000*lon1,1000*lon_stream());
+            }else{
+                LonSpeedSP = lonVelOverride;
+            }
+            if (latVelOverride == 0){
+                LatSpeedSP = LatVelGuidanceVelPID.calculate(1000*lat1,1000*lat_stream());
+            }else{
+                LatSpeedSP = latVelOverride;
+            }
+
+            LatAdjust = LatGuidanceAdjustPID.calculate(LatSpeedSP,get<1>(velvec_surf));
+            LonAdjust = LonGuidanceAdjustPID.calculate(LonSpeedSP,get<2>(velvec_surf));
         }
+
+        dra.clear(false);
+        dra.add_direction(SetForeVector,ref_frame_surf,2,true);
 
         TopVector_surface = sct.transform_direction(TopVector,ref_frame_vessel,ref_frame_surf);
         ForeVector_surface = sct.transform_direction(ForeVector,ref_frame_vessel,ref_frame_surf);
@@ -89,21 +109,26 @@ void VesselControl::Loop(){
         yawVelSP = YawVelControlPID.calculate(0,get<1>(attitudeError));
         rollVelSP = RollVelControlPID.calculate(0,get<2>(attitudeError));
 
-        //vertical speed
         if(brakingMode){
-            a_setpoint = pow(magnitude(vel_stream()),2) / (2 * alt_stream_ground() + 7);
+            a_setpoint = pow(magnitude(vel_stream()),2) / (2 * alt_stream_ground() + alt1);
             thrott = ThrottleControlBrakingPID.calculate(a_setpoint, g_force_stream());
         }else{
             vertVelSP = VertSpeedControlPID.calculate(alt1,alt_stream_ground());
             thrott = ThrottleControlPID.calculate(vertVelSP,get<0>(velvec_surf));
+
+
+            cout << vertVelSP << "    " << get<0>(velvec_surf) << "     "<< thrott << endl;
+
         }
-        //attitude correction priority
+//        attitude correction priority
         if( magnitude( make_tuple(get<0>(attitudeError),get<1>(attitudeError),0) ) > 30){
             midval = 0;
         }
         else{
             midval = thrott;
         }
+
+
 
         //get angular velocity vector
         angVel_vessel = sct.transform_direction(angvel_stream(),ref_frame_nonrot,ref_frame_vessel);
@@ -123,23 +148,6 @@ void VesselControl::Loop(){
         FR1Engine.engine().set_thrust_limit((midval - pitchAdjust + yawAdjust - rollAdjust));
         FR2Engine.engine().set_thrust_limit((midval - pitchAdjust + yawAdjust ));
 
-        //Horizontal speed
-        if (lonVelOverride == 0){
-            LonSpeedSP = LonVelGuidanceVelPID.calculate(1000*lon1,1000*lon_stream());
-        }else{
-            LonSpeedSP = lonVelOverride;
-        }
-        if (latVelOverride == 0){
-            LatSpeedSP = LatVelGuidanceVelPID.calculate(1000*lat1,1000*lat_stream());
-        }else{
-            LatSpeedSP = latVelOverride;
-        }
-
-//        cout << LatSpeedSP << "     " << LonSpeedSP << endl;
-
-        LatAdjust = LatGuidanceAdjustPID.calculate(LatSpeedSP,get<1>(velvec_surf));
-        LonAdjust = LonGuidanceAdjustPID.calculate(LonSpeedSP,get<2>(velvec_surf));
-
 }
 
 krpc::services::SpaceCenter::Vessel VesselControl::FindVessel(string name){
@@ -148,12 +156,24 @@ krpc::services::SpaceCenter::Vessel VesselControl::FindVessel(string name){
 
     krpc::services::SpaceCenter::Vessel vessel;
     for (int j = 0; j < int(sct.vessels().size()) ; j++){
-        if (sct.vessels()[j].name() == name){
-            vessel = sct.vessels()[j];
-            break;
+       for (int i = 0; i < int(sct.vessels()[j].parts().all().size()); i++ ){
+           if (sct.vessels()[j].parts().all()[i].tag() == name){
+                vessel = sct.vessels()[j];
+                cout << "Vessel found." << endl;
+                break;
+            }
         }
     }
     return vessel;
+
+
+}
+
+void VesselControl::Shutdown2Engines(){
+    BR2Engine.engine().set_active(false);
+    BL2Engine.engine().set_active(false);
+    FR2Engine.engine().set_active(false);
+    FL2Engine.engine().set_active(false);
 }
 
 void VesselControl::ExtendGear(){
@@ -164,6 +184,25 @@ void VesselControl::ExtendGear(){
     extend.move_next_preset();
     rotate.move_next_preset();
 
+}
+
+void VesselControl::SwitchMode(){
+
+    brakingMode = !brakingMode;
+    PitchVelControlPID.reset();
+    PitchTorqueControlPID.reset();
+    YawTorqueControlPID.reset();
+    YawVelControlPID.reset();
+    RollTorqueControlPID.reset();
+    RollVelControlPID.reset();
+    LatGuidanceAdjustPID.reset();
+    LonGuidanceAdjustPID.reset();
+    LatVelGuidanceVelPID.reset();
+    LonVelGuidanceVelPID.reset();
+    VertSpeedControlPID.reset();
+    ThrottleControlBrakingPID.reset();
+    ThrottleControlPID.reset();
+    ResetLatLon();
 }
 
 void VesselControl::ResetLatLon(){
@@ -177,8 +216,12 @@ VesselControl::~VesselControl(){
     vel_stream.remove();
     angvel_stream.remove();
     alt_stream.remove();
+    alt_stream_ground.remove();
     lat_stream.remove();
     lon_stream.remove();
+    g_force_stream.remove();
+
+    cout << "Deleted Vessel" << endl;
 }
 
 

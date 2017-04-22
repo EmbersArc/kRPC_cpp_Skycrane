@@ -7,46 +7,60 @@ using namespace std;
 
 int main() {
 
-    cout << "Started." << endl;
+        cout << "Started." << endl;
 
-    VesselControl Curiosity = VesselControl("Curiosity");
-    Curiosity.vessel.control().set_throttle(1);
-    Curiosity.vessel.control().set_sas(false);
-    Curiosity.StartEngines();
+        VesselControl *Skycrane = new VesselControl("Skycrane");
+        Skycrane->vessel.control().set_sas_mode(krpc::services::SpaceCenter::SASMode::retrograde);
 
+//    while(Curiosity.alt_stream_ground() > 10000){}
 
+//        Curiosity.vessel.parts().with_tag("parachute")[0].parachute().deploy();
 
-//    Curiosity.brakingMode = true;
+    while(magnitude(Skycrane->vel_stream()) > 170){}
 
-//    while(Curiosity.alt_stream_ground() > 7){
-//        Curiosity.Loop();
-//        }
+        Skycrane->vessel.control().toggle_action_group(3);
 
+    while(magnitude(Skycrane->vel_stream()) > 70){}
 
-//    Curiosity.ResetLatLon();
+        Skycrane->vessel.parts().with_tag("decoupler1")[0].decoupler().decouple();
 
+        delete Skycrane;
 
+        VesselControl Curiosity = VesselControl("Skycrane");
 
+        Curiosity.vessel.control().set_throttle(1);
+        Curiosity.vessel.control().set_sas(false);
+        Curiosity.StartEngines();
 
-    Curiosity.alt1 = 7;
+        Curiosity.SwitchMode(); //to braking mode
 
-    Curiosity.brakingMode = false;
+    while(Curiosity.alt_stream_ground() > 50){
+        Curiosity.Loop();
+        }
 
+//        Curiosity.Shutdown2Engines();
 
-    while(Curiosity.alt_stream_ground() < Curiosity.alt1 - 1){
+        Curiosity.ResetLatLon();
+        Curiosity.SwitchMode(); //to landing mode
+
+        Curiosity.alt1 = 10;
+
+    while( abs(Curiosity.alt_stream_ground() - Curiosity.alt1) > 2){
         Curiosity.Loop();
     }
 
+    cout << "arrived" << endl;
+
     time_t arrivaltime = time(NULL);
 
-    while(time(NULL) - arrivaltime < 5){
+    while(time(NULL) - arrivaltime < 10){
         Curiosity.Loop();
     }
 
     Curiosity.vessel.control().toggle_action_group(1);
     Curiosity.vessel.parts().decouplers()[0].decouple();
     cout << "Skycrane extending" << endl;
-    Curiosity.CreateLanderVessel("Curiosity Probe");
+    Curiosity.CreateLanderVessel("Rover");
     time_t decoupletime = time(NULL);
 
     while(time(NULL) - decoupletime < 2){

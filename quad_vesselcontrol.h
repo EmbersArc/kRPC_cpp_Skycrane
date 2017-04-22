@@ -26,6 +26,8 @@ class VesselControl{
         void CreateLanderVessel(string name);
         void ExtendGear();
         void ResetLatLon();
+        void Shutdown2Engines();
+        void SwitchMode();
         ~VesselControl();
         krpc::services::SpaceCenter::Vessel vessel,lander;
         bool brakingMode = false;
@@ -63,25 +65,25 @@ class VesselControl{
             PID LatVelGuidanceVelPID = PID(300,-300,4,0,0);
 
             //lat and lon guidance adjustment P controller
-            PID LatGuidanceAdjustPID = PID(0.4,-0.4,0.03,0.02,0);
-            PID LonGuidanceAdjustPID = PID(0.4,-0.4,0.03,0.02,0);
+            PID LatGuidanceAdjustPID = PID(0.4,-0.4,0.06,0,0);
+            PID LonGuidanceAdjustPID = PID(0.4,-0.4,0.06,0,0);
 
             //Rotational velocity control setup
-            PID PitchVelControlPID 		= PID(3,	-3,	0.1,	0.01,	0);
-            PID YawVelControlPID 		= PID(3,	-3,	0.1,	0.01,	0);
+            PID PitchVelControlPID 		= PID(3,	-3,	0.1,	0,	0);
+            PID YawVelControlPID 		= PID(3,	-3,	0.1,	0,	0);
             PID RollVelControlPID 		= PID(1,	-1,	0.005,	0.0,	0);
 
             //Rotational torque control setup
-            PID PitchTorqueControlPID	= PID(0.4,	-0.4,	0.15,	0,		0);
-            PID YawTorqueControlPID		= PID(0.4,	-0.4,	0.15,	0,		0);
+            PID PitchTorqueControlPID	= PID(0.4,	-0.4,	0.2,	0,		0);
+            PID YawTorqueControlPID		= PID(0.4,	-0.4,	0.2,	0,		0);
             PID RollTorqueControlPID	= PID(0.2,	-0.2,	0.1,	0,		0);
 
             //Altitude speed control setup
-            PID VertSpeedControlPID		= PID(40,	-40,		0.7,		0,		0);
+            PID VertSpeedControlPID		= PID(40,	-40,		0.2,		0,		0);
 
             //Altitude throttle control setup
-            PID ThrottleControlPID          = PID(0.8,	0,		0.15,	0.05,	0);
-            PID ThrottleControlBrakingPID	= PID(0.9,	0,		0.5,	0.2,	0);
+            PID ThrottleControlPID          = PID(0.8,	0,		0.2,	0,	0);
+            PID ThrottleControlBrakingPID	= PID(0.9,	0,		0.3,	0,	0);
 
 
 
